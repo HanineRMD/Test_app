@@ -68,9 +68,7 @@ docker ps
 curl http://localhost:4566/_localstack/health
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 1**
-> `docker ps` → affiche le conteneur `localstack-main` avec status `(healthy)`
-> Le health endpoint dans le navigateur affiche `"s3": "available"`, `"iam": "available"`, `"sqs": "available"`, `"edition": "community"`
+![Application de Gestion de Contacts](screenshots/3.jpg)
 
 ---
 
