@@ -1,0 +1,25 @@
+﻿# LocalStack et AWS
+*.log
+*.lock
+.aws/
+
+# Fichiers temporaires
+*.tmp
+*.temp
+*.swp
+
+# Fichiers système Windows
+Thumbs.db
+desktop.ini
+ntuser.dat*
+
+# Dossiers Python
+__pycache__/
+*.pyc
+venv/
+env/
+
+# Secrets et clés
+*.pem
+*.key
+secrets.json

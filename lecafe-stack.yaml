@@ -1,0 +1,206 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Le Cafe complete infrastructure stack.
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: development
+    AllowedValues: [development, staging, production]
+  LogRetentionDays:
+    Type: Number
+    Default: 30
+  OrderQueueVisibilityTimeout:
+    Type: Number
+    Default: 30
+Resources:
+  LeCafeAppRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "lecafe-app-role-${EnvironmentName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LeCafeAppPermissions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowS3AssetRead
+                Effect: Allow
+                Action: [s3:GetObject, s3:ListBucket]
+                Resource:
+                  - !GetAtt LeCafeAssetsBucket.Arn
+                  - !Sub "${LeCafeAssetsBucket.Arn}/*"
+              - Sid: AllowSQSOrderWrite
+                Effect: Allow
+                Action: [sqs:SendMessage, sqs:GetQueueUrl, sqs:GetQueueAttributes]
+                Resource: !GetAtt LeCafeKitchenOrders.Arn
+      Tags:
+        - {Key: Project, Value: LeCafe}
+        - {Key: Environment, Value: !Ref EnvironmentName}
+  LeCafeAppInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "lecafe-app-profile-${EnvironmentName}"
+      Roles: [!Ref LeCafeAppRole]
+  LeCafeAssetsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub "lecafe-assets-${EnvironmentName}"
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - {Key: Project, Value: LeCafe}
+        - {Key: Environment, Value: !Ref EnvironmentName}
+  LeCafeLogsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub "lecafe-logs-${EnvironmentName}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldLogs
+            Status: Enabled
+            Prefix: ""
+            ExpirationInDays: !Ref LogRetentionDays
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 7
+      Tags:
+        - {Key: Project, Value: LeCafe}
+        - {Key: Environment, Value: !Ref EnvironmentName}
+  LeCafeKitchenOrdersDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "lecafe-kitchen-orders-dlq-${EnvironmentName}"
+      MessageRetentionPeriod: 1209600
+      Tags:
+        - {Key: Project, Value: LeCafe}
+        - {Key: Environment, Value: !Ref EnvironmentName}
+  LeCafeKitchenOrders:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "lecafe-kitchen-orders-${EnvironmentName}"
+      VisibilityTimeout: !Ref OrderQueueVisibilityTimeout
+      MessageRetentionPeriod: 86400
+      ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt LeCafeKitchenOrdersDLQ.Arn
+        maxReceiveCount: 3
+      Tags:
+        - {Key: Project, Value: LeCafe}
+        - {Key: Environment, Value: !Ref EnvironmentName}
+  LeCafeInventoryUpdates:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "lecafe-inventory-updates-${EnvironmentName}"
+      MessageRetentionPeriod: 86400
+      ReceiveMessageWaitTimeSeconds: 20
+      Tags:
+        - {Key: Project, Value: LeCafe}
+        - {Key: Environment, Value: !Ref EnvironmentName}
+  LeCafeLoyaltyPoints:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "lecafe-loyalty-points-${EnvironmentName}"
+      MessageRetentionPeriod: 86400
+      ReceiveMessageWaitTimeSeconds: 20
+      Tags:
+        - {Key: Project, Value: LeCafe}
+        - {Key: Environment, Value: !Ref EnvironmentName}
+  LeCafeManagerAlerts:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "lecafe-manager-alerts-${EnvironmentName}"
+      MessageRetentionPeriod: 86400
+      ReceiveMessageWaitTimeSeconds: 20
+      Tags:
+        - {Key: Project, Value: LeCafe}
+        - {Key: Environment, Value: !Ref EnvironmentName}
+  LeCafeSNSToSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref LeCafeInventoryUpdates
+        - !Ref LeCafeLoyaltyPoints
+        - !Ref LeCafeManagerAlerts
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowSNSPublishToQueues
+            Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: "*"
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref LeCafeOrdersTopic
+  LeCafeOrdersTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "lecafe-orders-topic-${EnvironmentName}"
+      DisplayName: Le Cafe Orders
+      Tags:
+        - {Key: Project, Value: LeCafe}
+        - {Key: Environment, Value: !Ref EnvironmentName}
+  InventorySubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref LeCafeOrdersTopic
+      Protocol: sqs
+      Endpoint: !GetAtt LeCafeInventoryUpdates.Arn
+      RawMessageDelivery: false
+  LoyaltySubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref LeCafeOrdersTopic
+      Protocol: sqs
+      Endpoint: !GetAtt LeCafeLoyaltyPoints.Arn
+      RawMessageDelivery: false
+  ManagerAlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref LeCafeOrdersTopic
+      Protocol: sqs
+      Endpoint: !GetAtt LeCafeManagerAlerts.Arn
+      RawMessageDelivery: false
+      FilterPolicy: '{"Priority": ["high"]}'
+Outputs:
+  StackEnvironment:
+    Value: !Ref EnvironmentName
+  AssetsBucketName:
+    Value: !Ref LeCafeAssetsBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-AssetsBucket"
+  AssetsBucketArn:
+    Value: !GetAtt LeCafeAssetsBucket.Arn
+  LogsBucketName:
+    Value: !Ref LeCafeLogsBucket
+  KitchenQueueUrl:
+    Value: !Ref LeCafeKitchenOrders
+    Export:
+      Name: !Sub "${AWS::StackName}-KitchenQueueUrl"
+  KitchenQueueArn:
+    Value: !GetAtt LeCafeKitchenOrders.Arn
+  DLQUrl:
+    Value: !Ref LeCafeKitchenOrdersDLQ
+  OrdersTopicArn:
+    Value: !Ref LeCafeOrdersTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-OrdersTopicArn"
+  AppRoleArn:
+    Value: !GetAtt LeCafeAppRole.Arn
+  AppInstanceProfileName:
+    Value: !Ref LeCafeAppInstanceProfile
