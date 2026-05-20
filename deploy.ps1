@@ -1,48 +1,33 @@
-﻿# deploy.ps1 - Script de déploiement Le Café
+﻿# deploy.ps1 - Déploiement Le Café Stack
 param(
-    [string]$EnvironmentName = "development",
-    [int]$LogRetentionDays = 30,
-    [int]$VisibilityTimeout = 30
+    [string]$Environment = "development",
+    [int]$RetentionDays = 30,
+    [int]$Timeout = 30
 )
 
 $EP = "http://localhost:4566"
 $StackName = "lecafe-stack"
-$TemplateFile = "lecafe-stack.yaml"
 
-Write-Host "=== Déploiement Le Café Stack ===" -ForegroundColor Green
+Write-Host "=== Déploiement Le Café ===" -ForegroundColor Green
 
 # Configurer AWS pour LocalStack
 $env:AWS_ACCESS_KEY_ID = "test"
-$env:AWS_SECRET_ACCESS_KEY = "test"  
+$env:AWS_SECRET_ACCESS_KEY = "test"
 $env:AWS_DEFAULT_REGION = "us-east-1"
 
-# Valider le template
+# Valider
 Write-Host "Validation du template..." -ForegroundColor Yellow
-aws --endpoint-url $EP cloudformation validate-template --template-body "file://$TemplateFile"
+aws --endpoint-url $EP cloudformation validate-template --template-body "file://lecafe-stack.yaml"
 
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
-# Créer/Mettre à jour le stack
+# Déployer
 Write-Host "Déploiement du stack..." -ForegroundColor Yellow
-aws --endpoint-url $EP cloudformation create-stack `
-    --stack-name $StackName `
-    --template-body "file://$TemplateFile" `
-    --parameters `
-        ParameterKey=EnvironmentName,ParameterValue=$EnvironmentName `
-        ParameterKey=LogRetentionDays,ParameterValue=$LogRetentionDays `
-        ParameterKey=OrderQueueVisibilityTimeout,ParameterValue=$VisibilityTimeout `
-    --capabilities CAPABILITY_NAMED_IAM 2>$null
+aws --endpoint-url $EP cloudformation create-stack --stack-name $StackName --template-body "file://lecafe-stack.yaml" --parameters ParameterKey=EnvironmentName,ParameterValue=$Environment ParameterKey=LogRetentionDays,ParameterValue=$RetentionDays ParameterKey=OrderQueueVisibilityTimeout,ParameterValue=$Timeout --capabilities CAPABILITY_NAMED_IAM 2>$null
 
 if ($LASTEXITCODE -eq 255) {
-    Write-Host "Stack existe déjà, mise à jour..." -ForegroundColor Yellow
-    aws --endpoint-url $EP cloudformation update-stack `
-        --stack-name $StackName `
-        --template-body "file://$TemplateFile" `
-        --parameters `
-            ParameterKey=EnvironmentName,ParameterValue=$EnvironmentName `
-            ParameterKey=LogRetentionDays,ParameterValue=$LogRetentionDays `
-            ParameterKey=OrderQueueVisibilityTimeout,ParameterValue=$VisibilityTimeout `
-        --capabilities CAPABILITY_NAMED_IAM
+    Write-Host "Stack existe, mise à jour..." -ForegroundColor Yellow
+    aws --endpoint-url $EP cloudformation update-stack --stack-name $StackName --template-body "file://lecafe-stack.yaml" --parameters ParameterKey=EnvironmentName,ParameterValue=$Environment ParameterKey=LogRetentionDays,ParameterValue=$RetentionDays ParameterKey=OrderQueueVisibilityTimeout,ParameterValue=$Timeout --capabilities CAPABILITY_NAMED_IAM
 }
 
-Write-Host "Déploiement terminé!" -ForegroundColor Green
+Write-Host "Terminé!" -ForegroundColor Green

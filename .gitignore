@@ -7,11 +7,14 @@
 *.tmp
 *.temp
 *.swp
+*.pem
+*.ppk
 
 # Fichiers système Windows
 Thumbs.db
 desktop.ini
 ntuser.dat*
+*.LOG*
 
 # Dossiers Python
 __pycache__/
@@ -19,7 +22,6 @@ __pycache__/
 venv/
 env/
 
-# Secrets et clés
-*.pem
-*.key
+# Secrets
 secrets.json
+credentials
