@@ -68,7 +68,7 @@ docker ps
 curl http://localhost:4566/_localstack/health
 ```
 
-![Application de Gestion de Contacts](screenshots/3.jpg)
+![](screenshots/3.png)
 
 ---
 
@@ -94,10 +94,9 @@ aws --endpoint-url http://localhost:4566 s3 ls
 aws --endpoint-url http://localhost:4566 s3 ls
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 2**
-> La commande `s3 ls` affiche `2026-05-20 ... lecafe-menus` → bucket créé avec succès
+![](screenshots/4.png)
+![](screenshots/2.png)
 
----
 
 ### Étape 4 — Upload et download S3 (round-trip)
 
@@ -114,11 +113,8 @@ aws --endpoint-url http://localhost:4566 s3 ls s3://lecafe-menus/
 type menu-downloaded.txt
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 3**
-> `s3 ls s3://lecafe-menus/` affiche `menu-paris.txt` avec sa taille
-> `type menu-downloaded.txt` affiche le contenu du fichier — identique à l'original
+![](screenshots/5.png)
 
----
 
 ### Étape 5 — Créer un utilisateur IAM
 
@@ -134,10 +130,8 @@ aws --endpoint-url http://localhost:4566 iam attach-user-policy \
 aws --endpoint-url http://localhost:4566 iam list-attached-user-policies --user-name lecafe-app
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 4**
-> La réponse JSON affiche `"PolicyName": "AmazonS3ReadOnlyAccess"` dans la liste des policies attachées
+![](screenshots/6.png)
 
----
 
 ### Étape 6 — Créer une queue SQS et envoyer un message
 
@@ -167,11 +161,7 @@ aws --endpoint-url http://localhost:4566 sqs receive-message \
 docker logs localstack-main --tail 50
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 6**
-> Les logs affichent la trace de chaque appel API :
-> `s3.CreateBucket => 200`, `s3.PutObject => 200`, `iam.CreateUser => 200`, `sqs.CreateQueue => 200`, `sqs.SendMessage => 200`, `sqs.ReceiveMessage => 200`
 
----
 
 ## Lab 01 — IAM : Identity and Access Management
 
@@ -201,10 +191,7 @@ aws --endpoint-url http://localhost:4566 iam add-user-to-group --user-name charl
 aws --endpoint-url http://localhost:4566 iam get-group --group-name cafe-developers
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 7**
-> La réponse JSON affiche `alice` et `bob` dans la liste `Users` du groupe `cafe-developers`
 
----
 
 ### Étape 2 — Créer les policies JSON custom
 
@@ -225,9 +212,6 @@ aws --endpoint-url http://localhost:4566 iam get-policy-version \
   --version-id v1
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 8**
-> La réponse JSON affiche les 2 statements de la policy : `AllowS3BucketListing` et `AllowS3ObjectOperations` avec les bons ARNs de ressources
-
 ---
 
 ### Étape 3 — Attacher les policies aux groupes
@@ -247,8 +231,6 @@ aws --endpoint-url http://localhost:4566 iam list-attached-group-policies --grou
 aws --endpoint-url http://localhost:4566 iam list-attached-group-policies --group-name cafe-operations
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 9**
-> Chaque groupe affiche sa policy attachée : `LeCafe-Developer-S3` pour developers, `LeCafe-Operations-ReadOnly` pour operations
 
 ---
 
@@ -275,8 +257,6 @@ aws --endpoint-url http://localhost:4566 sts assume-role \
   --role-session-name ordering-app-session
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 10**
-> La réponse JSON affiche `AccessKeyId`, `SecretAccessKey`, `SessionToken` et `Expiration` — les credentials temporaires générés par STS, valables ~1h
 
 ---
 
@@ -310,10 +290,8 @@ aws --endpoint-url http://localhost:4566 ec2 create-key-pair \
 aws --endpoint-url http://localhost:4566 ec2 describe-key-pairs
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 11**
-> La réponse JSON affiche `"KeyName": "lecafe-keypair"` avec son fingerprint
 
----
+
 
 ### Étape 2 — Créer le Security Group
 
@@ -339,9 +317,6 @@ aws --endpoint-url http://localhost:4566 ec2 authorize-security-group-ingress \
 ```bash
 aws --endpoint-url http://localhost:4566 ec2 describe-security-groups --group-ids $SG_ID
 ```
-
-> 📸 **CAPTURE D'ÉCRAN 12**
-> La réponse JSON affiche les 3 règles inbound : port 80, 443 et 22 avec `CidrIp: 0.0.0.0/0`
 
 ---
 
@@ -373,13 +348,7 @@ aws --endpoint-url http://localhost:4566 ec2 describe-instances \
   --output table
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 13**
-> La table affiche :
-> - `Instance` → `i-xxxxxxxxxxxx`
-> - `State` → `running`
-> - `Role` → `arn:aws:iam::000000000000:instance-profile/lecafe-app-profile`
-> - `SecurityGroup` → `lecafe-app-sg`
-> - `KeyPair` → `lecafe-keypair`
+![](screenshots/7.png)
 
 ---
 
@@ -400,8 +369,6 @@ aws --endpoint-url http://localhost:4566 ec2 describe-instances \
   --query 'Reservations[0].Instances[0].State.Name' --output text
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 14**
-> La commande affiche successivement `stopped` puis `running` — cycle de vie de l'instance EC2 démontré
 
 ---
 
@@ -438,9 +405,7 @@ aws --endpoint-url http://localhost:4566 sqs get-queue-attributes \
   --queue-url $KITCHEN_QUEUE_URL \
   --attribute-names All
 ```
-
-> 📸 **CAPTURE D'ÉCRAN 15**
-> La réponse affiche les attributs de la queue cuisine, y compris `RedrivePolicy` avec l'ARN de la DLQ et `maxReceiveCount: 3`
+![](screenshots/9.png)
 
 ---
 
@@ -468,8 +433,6 @@ aws --endpoint-url http://localhost:4566 sqs get-queue-attributes \
   --query 'Attributes.ApproximateNumberOfMessages' --output text
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 16**
-> Avant delete : `3` messages. Après delete : `2` messages → le ReceiptHandle a bien confirmé la suppression du message traité
 
 ---
 
@@ -487,9 +450,6 @@ aws --endpoint-url http://localhost:4566 sqs create-queue \
 aws --endpoint-url http://localhost:4566 sqs get-queue-url \
   --queue-name lecafe-payments.fifo --query 'QueueUrl' --output text
 ```
-
-> 📸 **CAPTURE D'ÉCRAN 17**
-> L'URL retournée contient `.fifo` dans le nom → queue FIFO créée. L'envoi d'un message avec `--message-group-id` retourne un `SequenceNumber` (spécifique aux queues FIFO)
 
 ---
 
@@ -513,8 +473,6 @@ aws --endpoint-url http://localhost:4566 sns list-subscriptions-by-topic \
   --topic-arn $TOPIC_ARN
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 18**
-> La réponse JSON liste 3 subscriptions avec Protocol=`sqs` et les endpoints pointant vers `lecafe-inventory-updates`, `lecafe-loyalty-points` et `lecafe-manager-alerts`
 
 ---
 
@@ -546,9 +504,6 @@ aws --endpoint-url http://localhost:4566 sqs get-queue-attributes \
   --attribute-names ApproximateNumberOfMessages \
   --query 'Attributes.ApproximateNumberOfMessages' --output text
 ```
-
-> 📸 **CAPTURE D'ÉCRAN 19**
-> Les 3 queues affichent chacune des messages → le fan-out SNS fonctionne : 1 seul publish a déclenché la livraison vers 3 queues indépendantes
 
 ---
 
@@ -594,9 +549,6 @@ aws --endpoint-url http://localhost:4566 cloudformation validate-template \
   --template-body file://$HOME/lecafe-iac/lecafe-stack.yaml
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 21**
-> La réponse JSON liste les paramètres du template (`EnvironmentName`, `LogRetentionDays`, `OrderQueueVisibilityTimeout`) sans erreur → template valide
-
 ---
 
 ### Étape 3 — Déployer le stack
@@ -618,9 +570,6 @@ aws --endpoint-url http://localhost:4566 cloudformation describe-stacks \
   --stack-name lecafe-stack \
   --query 'Stacks[0].StackStatus' --output text
 ```
-
-> 📸 **CAPTURE D'ÉCRAN 22**
-> La commande retourne `CREATE_COMPLETE` → toutes les ressources ont été créées avec succès en une seule opération
 
 ---
 
@@ -645,9 +594,6 @@ aws --endpoint-url http://localhost:4566 cloudformation list-stack-resources \
   --query 'StackResourceSummaries[*].{Type:ResourceType,LogicalId:LogicalResourceId,Status:ResourceStatus}' \
   --output table
 ```
-
-> 📸 **CAPTURE D'ÉCRAN 23**
-> La table liste toutes les ressources créées par le stack (IAM Role, Instance Profile, 2 S3 Buckets, 5 SQS Queues, 1 SNS Topic, 3 Subscriptions, 1 Queue Policy) toutes avec status `CREATE_COMPLETE`
 
 ---
 
@@ -678,8 +624,6 @@ aws --endpoint-url http://localhost:4566 cloudformation describe-change-set \
   --output table
 ```
 
-> 📸 **CAPTURE D'ÉCRAN 24**
-> La table du change set affiche uniquement les ressources impactées par le changement de `LogRetentionDays` (14 au lieu de 30) → `Modify` sur `LeCafeLogsBucket`, aucun `Add` ou `Remove` inattendu
 
 ---
 
@@ -695,9 +639,7 @@ aws --endpoint-url http://localhost:4566 cloudformation delete-stack \
 aws --endpoint-url http://localhost:4566 cloudformation describe-stacks \
   --stack-name lecafe-stack
 ```
-
-> 📸 **CAPTURE D'ÉCRAN 25**
-> La commande retourne une erreur `Stack with id lecafe-stack does not exist` → stack supprimé avec succès. Une seule commande a supprimé toutes les ressources dans le bon ordre.
+![](screenshots/1.png)
 
 ---
 
